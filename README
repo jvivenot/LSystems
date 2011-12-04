@@ -1,2 +1,8 @@
 I recently stumbled upon an old ruby/gtk application I made years ago (around 2004, when I was in my late years in High School) intending to provide an helpful GUI to play around with the wonderful L-Systems.
 Figured I could update it and get to draw new beautiful things with a deterministically dumb turtle.
+
+Well, It took me hours to make this work on MAC OS X (it had originally been written on a Debian).
+Will definitely need to get rid of SDL/GTK to make it more user-friendly to those running Macs.
+
+Since I am now what you might call very rusty ruby-wise, I might also port it to some other language I have at least used once in the last seven years.
+
