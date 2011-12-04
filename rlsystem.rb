@@ -349,62 +349,31 @@ class RlsystemGlade
     @@minx = 0
     @@miny = 0
 
-     str.each_byte{|z|
-       x = z.chr
-       found = false
-       @@lines.each{|y|
-         if x == y[0] && !found then
-           result << [@curx,@cury,@curx + Math.cos(3.14159/180*@curangle) * y[1].to_f, @cury + Math.sin(3.14159/180*@curangle) * y[1].to_f]
-           @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
-           @cury += Math.sin(3.14159/180*@curangle) * y[1].to_f
-           found = true
-           break
-         end
-       }
-       @@blanks.each{|y|
-         if x == y[0] && !found then
-           @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
-           @cury += Math.sin(3.14159/180*@curangle) * y[1].to_f
-           found = true
-           break
-         end
-       }
-       @@angles.each{|y|
-         if x == y[0] && !found then
-           @curangle += y[1].to_f
-           found = true
-           break
-         end
-       }
-       if @curx > @@maxx then @@maxx = @curx end
-       if @cury > @@maxy then @@maxy = @cury end
-       if @curx < @@minx then @@minx = @curx end
-       if @cury < @@miny then @@miny = @cury end
-     }
-
-
-#    def str2tree(str)
-#      if str == "" then nil else
-#        case str[0]
-#        when "["
-#          par = 1
-#          i = 1
-#          while par != 0
-#            case str[i]
-#            when "["
-#              par += 1
-#            when "]"
-#              par -= 1
-#            end
-#            i += 1
-#          end
-#          Arbre.new(nil,[str2tree(str[1..i-2]),str2tree(str[i..-1])])
-#        else
-#          str.length == 1 ? Arbre.new(str[0],[]) : Arbre.new(str[0],[str2tree(str[1..-1])])
-#        end
-#      end
-#    end
-#    result - str2tree(str)
+    def str2tree(str)
+      if str == "" then nil else
+        case str[0]
+        when "["
+          par = 1
+          i = 1
+          while par != 0
+            case str[i]
+            when "["
+              par += 1
+            when "]"
+              par -= 1
+            end
+            i += 1
+          end
+          Arbre.new(nil,[str2tree(str[1..i-2]),str2tree(str[i..-1])])
+        else
+          if str.length == 1 then
+            Arbre.new(str[0],[])
+          else
+            Arbre.new(str[0],[str2tree(str[1..-1])])
+        end
+      end
+    end
+    result = str2tree(str)
 
     result2 = Array.new
     scalex = $width / (1.2 * (@@maxx - @@minx))
