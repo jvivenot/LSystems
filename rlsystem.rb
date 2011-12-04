@@ -78,63 +78,6 @@ class RlsystemGlade
     }
 
     @entry3.text = "2"
-
-  end
-
-  class Arbre
-    attr :val,:sons
-
-    def initialize(val,sons)
-      @sons = Array.new
-      @val = val.chr
-      sons.each {|x| @sons << x}
-    end
-
-    def tree2lines(x,y,angle)
-      arr = Array.new
-      curx = x
-      cury = y
-      curangle = angle
-
-      if !@val.nil? then
-        found = false
-        RlsystemGlade.lines.each{|y|
-          if @val == y[0] && !found then
-            arr << [curx,cury,curx + Math.cos(3.14159/180*curangle) * y[1].to_f, cury + Math.sin(3.14159/180*curangle) * y[1].to_f]
-            curx += Math.cos(3.14159/180*curangle) * y[1].to_f
-            cury += Math.sin(3.14159/180*curangle) * y[1].to_f
-            found = true
-            break
-          end
-        }
-        RlsystemGlade.blanks.each{|y|
-          if @val == y[0] && !found then
-            curx += Math.cos(3.14159/180*curangle) * y[1].to_f
-            cury += Math.sin(3.14159/180*curangle) * y[1].to_f
-            found = true
-            break
-          end
-        }
-        RlsystemGlade.angles.each{|y|
-          if @val == y[0] && !found then
-            curangle += y[1].to_f
-            found = true
-            break
-          end
-        }
-      end
-
-      if @sons.length != 0 then
-        @sons.each {|t| arr += t.tree2lines(curx,cury,curangle)}
-      end
-
-      if curx > RlsystemGlade.maxx then RlsystemGlade.maxx = curx end
-      if cury > RlsystemGlade.maxy then RlsystemGlade.maxy = cury end
-      if curx < RlsystemGlade.minx then RlsystemGlade.minx = curx end
-      if cury < RlsystemGlade.miny then RlsystemGlade.miny = cury end
-
-      arr
-    end
   end
 
   def treat(str)
@@ -350,37 +293,57 @@ class RlsystemGlade
 
   def str2lines(str)
     result = Array.new
+    @curx = 0
+    @cury = 0
+    @curangle = 0
     RlsystemGlade.maxx = 0
     RlsystemGlade.maxy = 0
     RlsystemGlade.minx = 0
     RlsystemGlade.miny = 0
-    def str2tree(str)
-      if str == "" then nil else
-        case str[0]
-        when "["
-          par = 1
-          i = 1
-          while par != 0
-            case str[i]
-            when "["
-              par += 1
-            when "]"
-              par -= 1
-            end
-            i += 1
-          end
-          Arbre.new(nil,[str2tree(str[1..i-2]),str2tree(str[i..-1])])
-        else
-          if str.length == 1 then
-            Arbre.new(str[0],[])
-          else
-            Arbre.new(str[0],[str2tree(str[1..-1])])
-          end
-        end
+    position_stack = Array.new
+
+    str.each_byte{|z|
+      x = z.chr
+      found = false
+      if x == "[" then
+        position_stack.push [@curx, @cury, @curangle]
       end
-    end
-    tree = str2tree(str)
-    result = tree.tree2lines(0,0,0)
+      if x == "]" then
+        vals = position_stack.pop
+        @curx = vals[0]
+        @cury = vals[1]
+        @curangle = vals[2]
+      end
+      RlsystemGlade.lines.each{|y|
+        if x == y[0] && !found then
+          result << [@curx,@cury,@curx + Math.cos(3.14159/180*@curangle) * y[1].to_f, @cury + Math.sin(3.14159/180*@curangle) * y[1].to_f]
+          @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
+          @cury += Math.sin(3.14159/180*@curangle) * y[1].to_f
+          found = true
+          break
+        end
+      }
+      RlsystemGlade.blanks.each{|y|
+        if x == y[0] && !found then
+          @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
+          @cury += Math.sin(3.14159/180*@curangle) * y[1].to_f
+          found = true
+          break
+        end
+      }
+      RlsystemGlade.angles.each{|y|
+        if x == y[0] && !found then
+          @curangle += y[1].to_f
+          found = true
+          break
+        end
+      }
+      if @curx > RlsystemGlade.maxx then RlsystemGlade.maxx = @curx end
+      if @cury > RlsystemGlade.maxy then RlsystemGlade.maxy = @cury end
+      if @curx < RlsystemGlade.minx then RlsystemGlade.minx = @curx end
+      if @cury < RlsystemGlade.miny then RlsystemGlade.miny = @cury end
+    }
+
     result2 = Array.new
     scalex = $width / (1.2 * (RlsystemGlade.maxx - RlsystemGlade.minx))
     scaley = $height / (1.2 * (RlsystemGlade.maxy - RlsystemGlade.miny))
