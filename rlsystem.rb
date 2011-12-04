@@ -13,6 +13,10 @@ $width = 500
 $height = 500
 
 class RlsystemGlade
+  class << self
+    attr_accessor :lines,:blanks,:angles,:maxx,:maxy,:minx,:miny,:box,:lines_to_draw
+  end
+
   include GetText
   attr :glade
 
@@ -52,33 +56,38 @@ class RlsystemGlade
     [Axiome, Regle, Regle2, Line, Blank, Angle].each {|x| @combobox1.append_text x}
     set_invisible
 
-    [[Axiome,"F++F++F",""],
-     [Regle, "F", "F-F++F-F"],
-     [Line,"F","1"],
-     [Angle,"+","60"],
-     [Angle,"-","-60"]
-    ].each {|x|
+    base_rules = [[Axiome,"F++F++F",""],
+      [Regle, "F", "F-F++F-F"],
+      [Line,"F","1"],
+      [Angle,"+","60"],
+      [Angle,"-","-60"]
+    ]
+    base_rules = [[Axiome,"AB",""],
+      [Regle, "A", "AA"],
+      [Regle, "B", "[+AB][-AB]"],
+      [Line,"A","1"],
+      [Line,"B","1"],
+      [Angle,"+","60"],
+      [Angle,"-","-60"]
+    ]
+    base_rules.each {|x|
       iter = @liststore.append
       @liststore.set_value(iter,0,x[0])
       @liststore.set_value(iter,1,x[1])
       @liststore.set_value(iter,2,x[2])
     }
 
-    @entry3.text = "5"
+    @entry3.text = "2"
 
   end
 
   class Arbre
-
     attr :val,:sons
-    @sons = Array.new
-    def new(val,sons)
-      @val = val
-      sons.each {|x| @sons << x}
-    end
 
-    def add_son(s)
-      @sons << s
+    def initialize(val,sons)
+      @sons = Array.new
+      @val = val.chr
+      sons.each {|x| @sons << x}
     end
 
     def tree2lines(x,y,angle)
@@ -89,7 +98,7 @@ class RlsystemGlade
 
       if !@val.nil? then
         found = false
-        @@lines.each{|y|
+        RlsystemGlade.lines.each{|y|
           if @val == y[0] && !found then
             arr << [curx,cury,curx + Math.cos(3.14159/180*curangle) * y[1].to_f, cury + Math.sin(3.14159/180*curangle) * y[1].to_f]
             curx += Math.cos(3.14159/180*curangle) * y[1].to_f
@@ -98,7 +107,7 @@ class RlsystemGlade
             break
           end
         }
-        @@blanks.each{|y|
+        RlsystemGlade.blanks.each{|y|
           if @val == y[0] && !found then
             curx += Math.cos(3.14159/180*curangle) * y[1].to_f
             cury += Math.sin(3.14159/180*curangle) * y[1].to_f
@@ -106,7 +115,7 @@ class RlsystemGlade
             break
           end
         }
-        @@angles.each{|y|
+        RlsystemGlade.angles.each{|y|
           if @val == y[0] && !found then
             curangle += y[1].to_f
             found = true
@@ -116,13 +125,13 @@ class RlsystemGlade
       end
 
       if @sons.length != 0 then
-        @sons.each {|t| arr << t.tree2lines(curx,cury,curangle)}
+        @sons.each {|t| arr += t.tree2lines(curx,cury,curangle)}
       end
 
-      if curx > @@maxx then @@maxx = curx end
-      if cury > @@maxy then @@maxy = cury end
-      if curx < @@minx then @@minx = curx end
-      if cury < @@miny then @@miny = cury end
+      if curx > RlsystemGlade.maxx then RlsystemGlade.maxx = curx end
+      if cury > RlsystemGlade.maxy then RlsystemGlade.maxy = cury end
+      if curx < RlsystemGlade.minx then RlsystemGlade.minx = curx end
+      if cury < RlsystemGlade.miny then RlsystemGlade.miny = cury end
 
       arr
     end
@@ -134,7 +143,7 @@ class RlsystemGlade
       x = y.chr
       found = false
       i = 0
-      until found || i == @regles.length 
+      until found || i == @regles.length
         if @regles[i][0] == x then
           found = true
           result << @regles[i][1]
@@ -152,7 +161,7 @@ class RlsystemGlade
       x = y.chr
       found = false
       i = 0
-      until found || i == @postregles.length 
+      until found || i == @postregles.length
         if @postregles[i][0] == x then
           found = true
           postresult << @postregles[i][1]
@@ -169,15 +178,16 @@ class RlsystemGlade
     str.each_byte{|z|
       y = z.chr
       partial_found = false
-      @@angles.each{|x|
+      RlsystemGlade.angles.each{|x|
         if x[0] == y then partial_found = true end
       }
-      @@lines.each{|x|
+      RlsystemGlade.lines.each{|x|
         if x[0] == y then partial_found = true end
       }
-      @@blanks.each{|x|
+      RlsystemGlade.blanks.each{|x|
         if x[0] == y then partial_found = true end
       }
+      if ["[","]"].include? y then partial_found = true end
       found &&= partial_found
     }
     found
@@ -295,23 +305,22 @@ class RlsystemGlade
           message "Erreur : Parametre secondaire de ligne invalide"
           error = true
         end
-        @@lines << [iter[1],iter[2]]
+        RlsystemGlade.lines << [iter[1],iter[2]]
       when Blank
         if iter[2].to_i == 0 then
           message "Erreur : Parametre secondaire de blanc invalide"
           error = true
         end
-        @@blanks << [iter[1],iter[2]]
+        RlsystemGlade.blanks << [iter[1],iter[2]]
       when Angle
         if iter[2].to_i == 0 then
           message "Erreur : Parametre secondaire d'angle invalide"
           error = true
         end
-        @@angles << [iter[1],iter[2]]
+        RlsystemGlade.angles << [iter[1],iter[2]]
       end
     }
-
-    unless drawable?(treat(@axiome))
+    unless drawable?(post_treat(treat(@axiome)))
       message "Erreur : L'axiome n'est pas dessinable (meme apres post traitement)"
       error = true
     end
@@ -334,21 +343,17 @@ class RlsystemGlade
     @axiome = nil
     @regles = Array.new
     @postregles = Array.new
-    @@lines = Array.new
-    @@blanks = Array.new
-    @@angles = Array.new
+    RlsystemGlade.lines = Array.new
+    RlsystemGlade.blanks = Array.new
+    RlsystemGlade.angles = Array.new
   end
 
   def str2lines(str)
     result = Array.new
-    @curangle = 0
-    @curx = 0
-    @cury = 0
-    @@maxx = 0
-    @@maxy = 0
-    @@minx = 0
-    @@miny = 0
-
+    RlsystemGlade.maxx = 0
+    RlsystemGlade.maxy = 0
+    RlsystemGlade.minx = 0
+    RlsystemGlade.miny = 0
     def str2tree(str)
       if str == "" then nil else
         case str[0]
@@ -370,29 +375,30 @@ class RlsystemGlade
             Arbre.new(str[0],[])
           else
             Arbre.new(str[0],[str2tree(str[1..-1])])
+          end
         end
       end
     end
-    result = str2tree(str)
-
+    tree = str2tree(str)
+    result = tree.tree2lines(0,0,0)
     result2 = Array.new
-    scalex = $width / (1.2 * (@@maxx - @@minx))
-    scaley = $height / (1.2 * (@@maxy - @@miny))
+    scalex = $width / (1.2 * (RlsystemGlade.maxx - RlsystemGlade.minx))
+    scaley = $height / (1.2 * (RlsystemGlade.maxy - RlsystemGlade.miny))
     if scalex < scaley then
       scale = scalex
-      offsetx = (@@maxx - @@minx) * scale * 0.1
-      offsety = ($height - (@@maxy - @@miny) * scale) * 0.5 - @@miny
+      offsetx = (RlsystemGlade.maxx - RlsystemGlade.minx) * scale * 0.1
+      offsety = ($height - (RlsystemGlade.maxy - RlsystemGlade.miny) * scale) * 0.5 - RlsystemGlade.miny
     else
       scale = scaley
-      offsety = (@@maxy - @@miny) * scale * 0.1
-      offsetx = ($width - (@@maxx - @@minx) * scale) * 0.5 - @@minx
+      offsety = (RlsystemGlade.maxy - RlsystemGlade.miny) * scale * 0.1
+      offsetx = ($width - (RlsystemGlade.maxx - RlsystemGlade.minx) * scale) * 0.5 - RlsystemGlade.minx
     end
 
     result.each{|x|
-      result2 << [(x[0] - @@minx) * scale + offsetx, (x[1] - @@miny) * scale + offsety, (x[2] - @@minx) * scale + offsetx, (x[3] - @@miny) * scale + offsety]
+      result2 << [(x[0] - RlsystemGlade.minx) * scale + offsetx, (x[1] - RlsystemGlade.miny) * scale + offsety, (x[2] - RlsystemGlade.minx) * scale + offsetx, (x[3] - RlsystemGlade.miny) * scale + offsety]
     }
 
-    @@box = [offsetx,offsety,(@@maxx - @@minx) * scale + offsetx, (@@maxy - @@miny) * scale + offsety]
+    RlsystemGlade.box = [offsetx,offsety,(RlsystemGlade.maxx - RlsystemGlade.minx) * scale + offsetx, (RlsystemGlade.maxy - RlsystemGlade.miny) * scale + offsety]
     result2
   end
 
@@ -403,7 +409,7 @@ class RlsystemGlade
       @iterations.times {
         result = treat(result)
       }
-      @@result2 = str2lines result
+      RlsystemGlade.lines_to_draw = str2lines result
 
       t = Thread.new{
         require 'sdl'
@@ -414,7 +420,7 @@ class RlsystemGlade
         $white = $screen.format.mapRGB(255,255,255)
 
         def render
-          @@result2.each{|x|
+          RlsystemGlade.lines_to_draw.each{|x|
             $screen.draw_line(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
           }
           $screen.flip
@@ -422,28 +428,28 @@ class RlsystemGlade
 
         def recompute
           result = Array.new
-          scalex = $width / (1.2 * (@@box[2] - @@box[0]))
-          scaley = $height / (1.2 * (@@box[3] - @@box[1]))
+          scalex = $width / (1.2 * (RlsystemGlade.box[2] - RlsystemGlade.box[0]))
+          scaley = $height / (1.2 * (RlsystemGlade.box[3] - RlsystemGlade.box[1]))
           if scalex < scaley then
             scale = scalex
-            offsetx = (@@box[2] - @@box[0]) * scale * 0.1
-            offsety = ($height - (@@box[3] - @@box[1]) * scale) * 0.5
+            offsetx = (RlsystemGlade.box[2] - RlsystemGlade.box[0]) * scale * 0.1
+            offsety = ($height - (RlsystemGlade.box[3] - RlsystemGlade.box[1]) * scale) * 0.5
           else
             scale = scaley
-            offsety = (@@box[3] - @@box[1]) * scale * 0.1
-            offsetx = ($width - (@@box[2] - @@box[0]) * scale) * 0.5
+            offsety = (RlsystemGlade.box[3] - RlsystemGlade.box[1]) * scale * 0.1
+            offsetx = ($width - (RlsystemGlade.box[2] - RlsystemGlade.box[0]) * scale) * 0.5
           end
 
-          @@result2.each{|x|
-            result << [(x[0] - @@box[0]) * scale + offsetx, (x[1] - @@box[1]) * scale + offsety, (x[2] - @@box[0]) * scale + offsetx, (x[3] - @@box[1]) * scale + offsety]
+          RlsystemGlade.lines_to_draw.each{|x|
+            result << [(x[0] - RlsystemGlade.box[0]) * scale + offsetx, (x[1] - RlsystemGlade.box[1]) * scale + offsety, (x[2] - RlsystemGlade.box[0]) * scale + offsetx, (x[3] - RlsystemGlade.box[1]) * scale + offsety]
           }
 
-          @@result2 = result
-          @@result2.each{|x|
+          RlsystemGlade.lines_to_draw = result
+          RlsystemGlade.lines_to_draw.each{|x|
             $screen.draw_line(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
           }
 
-          @@box = [offsetx,offsety,(@@box[2] - @@box[0]) * scale + offsetx, (@@box[3] - @@box[1]) * scale + offsety]
+          RlsystemGlade.box = [offsetx,offsety,(RlsystemGlade.box[2] - RlsystemGlade.box[0]) * scale + offsetx, (RlsystemGlade.box[3] - RlsystemGlade.box[1]) * scale + offsety]
         end
 
         render
@@ -484,4 +490,3 @@ if __FILE__ == $0
   RlsystemGlade.new(PROG_PATH, nil, PROG_NAME)
   Gtk.main
 end
-
