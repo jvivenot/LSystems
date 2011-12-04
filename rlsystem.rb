@@ -9,12 +9,11 @@ Line = "Ligne"
 Blank = "Blank"
 Angle = "Angle"
 
-$width = 1500
-$height = 1000
+$width = 500
+$height = 500
 
 class RlsystemGlade
   include GetText
-
   attr :glade
 
   def initialize(path_or_data, root = nil, domain = nil, localedir = nil, flag = GladeXML::FILE)
@@ -206,7 +205,7 @@ class RlsystemGlade
 
   def add(widget)
     if @editing_state == 0 then
-      set_visible   
+      set_visible
       @editing_state = 1
     else
       message("Arretez tout autre action avant d'ajouter une entree...")
@@ -274,8 +273,6 @@ class RlsystemGlade
   def verify
     free_everything
     error = false
-    # verifie la bonne definition de chaque objet
-    # les mettre en memoire le cas echeant
     @liststore.each{ |model,path,iter| 
       if iter[1].length != 1 && iter[0] != Axiome then
         message("Erreur : un parametre principal est mal defini...")
@@ -345,31 +342,69 @@ class RlsystemGlade
   def str2lines(str)
     result = Array.new
     @curangle = 0
+    @curx = 0
+    @cury = 0
     @@maxx = 0
     @@maxy = 0
     @@minx = 0
     @@miny = 0
-    def str2tree(str)
-      if str == "" then nil else
-        case str[0]
-        when "["
-          par = 1
-          i = 1
-          while par != 0
-            case str[i]
-            when "["
-              par += 1
-            when "]"
-              par -= 1
-            end
-            i += 1
-          end
-          Arbre.new(nil,[str2tree(str[1..i-2]),str2tree(str[i..-1])])
-        else
-          str.length == 1 ? Arbre.new(str[0],[]) : Arbre.new(str[0],[str2tree(str[1..-1])])
-        end
-      end
-    end
+
+     str.each_byte{|z|
+       x = z.chr
+       found = false
+       @@lines.each{|y|
+         if x == y[0] && !found then
+           result << [@curx,@cury,@curx + Math.cos(3.14159/180*@curangle) * y[1].to_f, @cury + Math.sin(3.14159/180*@curangle) * y[1].to_f]
+           @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
+           @cury += Math.sin(3.14159/180*@curangle) * y[1].to_f
+           found = true
+           break
+         end
+       }
+       @@blanks.each{|y|
+         if x == y[0] && !found then
+           @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
+           @cury += Math.sin(3.14159/180*@curangle) * y[1].to_f
+           found = true
+           break
+         end
+       }
+       @@angles.each{|y|
+         if x == y[0] && !found then
+           @curangle += y[1].to_f
+           found = true
+           break
+         end
+       }
+       if @curx > @@maxx then @@maxx = @curx end
+       if @cury > @@maxy then @@maxy = @cury end
+       if @curx < @@minx then @@minx = @curx end
+       if @cury < @@miny then @@miny = @cury end
+     }
+
+
+#    def str2tree(str)
+#      if str == "" then nil else
+#        case str[0]
+#        when "["
+#          par = 1
+#          i = 1
+#          while par != 0
+#            case str[i]
+#            when "["
+#              par += 1
+#            when "]"
+#              par -= 1
+#            end
+#            i += 1
+#          end
+#          Arbre.new(nil,[str2tree(str[1..i-2]),str2tree(str[i..-1])])
+#        else
+#          str.length == 1 ? Arbre.new(str[0],[]) : Arbre.new(str[0],[str2tree(str[1..-1])])
+#        end
+#      end
+#    end
+#    result - str2tree(str)
 
     result2 = Array.new
     scalex = $width / (1.2 * (@@maxx - @@minx))
@@ -401,7 +436,7 @@ class RlsystemGlade
       }
       @@result2 = str2lines result
 
-      Process.fork{
+      t = Thread.new{
         require 'sdl'
         SDL.init(SDL::INIT_VIDEO)
         $screen = SDL.setVideoMode($width,$height,24,SDL::HWSURFACE | SDL::RESIZABLE)
@@ -411,7 +446,7 @@ class RlsystemGlade
 
         def render
           @@result2.each{|x|
-            $screen.drawLine(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
+            $screen.draw_line(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
           }
           $screen.flip
         end
@@ -430,14 +465,13 @@ class RlsystemGlade
             offsetx = ($width - (@@box[2] - @@box[0]) * scale) * 0.5
           end
 
-
           @@result2.each{|x|
             result << [(x[0] - @@box[0]) * scale + offsetx, (x[1] - @@box[1]) * scale + offsety, (x[2] - @@box[0]) * scale + offsetx, (x[3] - @@box[1]) * scale + offsety]
           }
 
           @@result2 = result
           @@result2.each{|x|
-            $screen.drawLine(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
+            $screen.draw_line(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
           }
 
           @@box = [offsetx,offsety,(@@box[2] - @@box[0]) * scale + offsetx, (@@box[3] - @@box[1]) * scale + offsety]
@@ -455,10 +489,8 @@ class RlsystemGlade
             $height = event.h
             recompute
             render
-          when "SDL::Event2::KeyDown"
-            case event.sym
-            when SDL::Key::ESCAPE
-            end
+          when "SDL::Event2::Quit"
+            quit = true
           when "SDL::Event2::KeyUp"
             if (event.sym == SDL::Key::ESCAPE)
               quit = true
@@ -466,9 +498,12 @@ class RlsystemGlade
           when SDL::Event2::Quit
             quit = true
           end
+          if quit then
+            print "Finished treating the event and will quit\n"
+          end
         end
       }
-
+      t.join
     end
   end
 end
