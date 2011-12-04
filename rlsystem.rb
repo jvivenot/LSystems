@@ -2,7 +2,6 @@
 
 require 'libglade2'
 
-
 Axiome = "Axiome"
 Regle = "Regle"
 Regle2 = "Post Regle"
@@ -13,12 +12,11 @@ Angle = "Angle"
 $width = 1500
 $height = 1000
 
-
 class RlsystemGlade
   include GetText
 
   attr :glade
-  
+
   def initialize(path_or_data, root = nil, domain = nil, localedir = nil, flag = GladeXML::FILE)
     bindtextdomain(domain, localedir, nil, "UTF-8")
     @glade = GladeXML.new(path_or_data, root, domain, localedir, flag) {|handler| method(handler)}
@@ -51,7 +49,7 @@ class RlsystemGlade
                                      :text => text_column + 2 ,
                                      :foreground => color_column + 2)
     @listview.append_column(column)
-    
+
     [Axiome, Regle, Regle2, Line, Blank, Angle].each {|x| @combobox1.append_text x}
     set_invisible
 
@@ -70,9 +68,9 @@ class RlsystemGlade
     @entry3.text = "5"
 
   end
-  
+
   class Arbre
-    
+
     attr :val,:sons
     @sons = Array.new
     def new(val,sons)
@@ -81,26 +79,22 @@ class RlsystemGlade
     end
 
     def add_son(s)
-
       @sons << s
-
     end
-    
+
     def tree2lines(x,y,angle)
-      
       arr = Array.new
       curx = x
       cury = y
       curangle = angle
 
-      if !@val.nil? then      
-        
+      if !@val.nil? then
         found = false
         @@lines.each{|y|
           if @val == y[0] && !found then
             arr << [curx,cury,curx + Math.cos(3.14159/180*curangle) * y[1].to_f, cury + Math.sin(3.14159/180*curangle) * y[1].to_f]
             curx += Math.cos(3.14159/180*curangle) * y[1].to_f
-            cury += Math.sin(3.14159/180*curangle) * y[1].to_f          
+            cury += Math.sin(3.14159/180*curangle) * y[1].to_f
             found = true
             break
           end
@@ -125,20 +119,17 @@ class RlsystemGlade
       if @sons.length != 0 then
         @sons.each {|t| arr << t.tree2lines(curx,cury,curangle)}
       end
-      
+
       if curx > @@maxx then @@maxx = curx end
       if cury > @@maxy then @@maxy = cury end
       if curx < @@minx then @@minx = curx end
       if cury < @@miny then @@miny = cury end
-      
+
       arr
-      
     end
-    
   end
 
   def treat(str)
-    
     result = String.new
     str.each_byte{|y|
       x = y.chr
@@ -153,13 +144,10 @@ class RlsystemGlade
       end
       result << x unless found
     }
-
     post_treat(result)
-
   end
 
   def post_treat(str)
-
     postresult = String.new
     str.each_byte{|y|
       x = y.chr
@@ -175,11 +163,9 @@ class RlsystemGlade
       postresult << x unless found
     }
     postresult
-
   end
 
   def drawable?(str)
-
     found = true
     str.each_byte{|z|
       y = z.chr
@@ -195,15 +181,11 @@ class RlsystemGlade
       }
       found &&= partial_found
     }
-
     found
-
   end
 
   def message(txt)
-
     @textview.buffer.insert_at_cursor txt + "\n"
-
   end
 
   def set_invisible
@@ -230,7 +212,7 @@ class RlsystemGlade
       message("Arretez tout autre action avant d'ajouter une entree...")
     end
   end
-  
+
   def edit(widget)
     if @editing_state == 0 then
       found = false
@@ -290,11 +272,8 @@ class RlsystemGlade
   end
 
   def verify
-
     free_everything
-    
     error = false
-    
     # verifie la bonne definition de chaque objet
     # les mettre en memoire le cas echeant
     @liststore.each{ |model,path,iter| 
@@ -309,7 +288,7 @@ class RlsystemGlade
           error = true
         else
           @axiome = iter[1]
-        end        
+        end
       when Regle
         @regles << [iter[1],iter[2]]
       when Regle2
@@ -336,41 +315,35 @@ class RlsystemGlade
     }
 
     unless drawable?(treat(@axiome))
-      message "Erreur : L'axiome n'est pas dessinable (meme apres post traitement)" 
+      message "Erreur : L'axiome n'est pas dessinable (meme apres post traitement)"
       error = true
     end
     @regles.each {|r|
       unless drawable?(post_treat(r[1]))
-        message "Erreur : Le resultat d'une regle n'est pas dessinable (meme apres post traitement)" 
+        message "Erreur : Le resultat d'une regle n'est pas dessinable (meme apres post traitement)"
         error = true
       end
     }
     @postregles.each {|r|
       unless drawable?(r[1])
-        message "Erreur : Le resultat d'une postregle n'est pas dessinable" 
+        message "Erreur : Le resultat d'une postregle n'est pas dessinable"
         error = true
       end
     }
-
     !error
-
   end
 
   def free_everything
-
     @axiome = nil
     @regles = Array.new
     @postregles = Array.new
     @@lines = Array.new
     @@blanks = Array.new
     @@angles = Array.new
-
   end
 
   def str2lines(str)
     result = Array.new
-#     @curx = 0
-#     @cury = 0
     @curangle = 0
     @@maxx = 0
     @@maxy = 0
@@ -398,40 +371,8 @@ class RlsystemGlade
       end
     end
 
-#     str.each_byte{|z|
-#       x = z.chr
-#       found = false
-#       @@lines.each{|y|
-#         if x == y[0] && !found then
-#           result << [@curx,@cury,@curx + Math.cos(3.14159/180*@curangle) * y[1].to_f, @cury + Math.sin(3.14159/180*@curangle) * y[1].to_f]
-#           @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
-#           @cury += Math.sin(3.14159/180*@curangle) * y[1].to_f          
-#           found = true
-#           break
-#         end
-#       }
-#       @@blanks.each{|y|
-#         if x == y[0] && !found then
-#           @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
-#           @cury += Math.sin(3.14159/180*@curangle) * y[1].to_f
-#           found = true
-#           break
-#         end
-#       }
-#       @@angles.each{|y|
-#         if x == y[0] && !found then
-#           @curangle += y[1].to_f
-#           found = true
-#           break
-#         end
-#       }
-#       if @curx > @@maxx then @@maxx = @curx end
-#       if @cury > @@maxy then @@maxy = @cury end
-#       if @curx < @@minx then @@minx = @curx end
-#       if @cury < @@miny then @@miny = @cury end
-#     }
     result2 = Array.new
-    scalex = $width / (1.2 * (@@maxx - @@minx)) 
+    scalex = $width / (1.2 * (@@maxx - @@minx))
     scaley = $height / (1.2 * (@@maxy - @@miny))
     if scalex < scaley then
       scale = scalex
@@ -443,22 +384,19 @@ class RlsystemGlade
       offsetx = ($width - (@@maxx - @@minx) * scale) * 0.5 - @@minx
     end
 
-
     result.each{|x|
-      result2 << [(x[0] - @@minx) * scale + offsetx, (x[1] - @@miny) * scale + offsety, (x[2] - @@minx) * scale + offsetx, (x[3] - @@miny) * scale + offsety]      
+      result2 << [(x[0] - @@minx) * scale + offsetx, (x[1] - @@miny) * scale + offsety, (x[2] - @@minx) * scale + offsetx, (x[3] - @@miny) * scale + offsety]
     }
 
-    @@box = [offsetx,offsety,(@@maxx - @@minx) * scale + offsetx, (@@maxy - @@miny) * scale + offsety]      
-
+    @@box = [offsetx,offsety,(@@maxx - @@minx) * scale + offsetx, (@@maxy - @@miny) * scale + offsety]
     result2
-
   end
 
   def render(widget)
     @iterations = @entry3.text.to_i
     if verify then
       result = @axiome
-      @iterations.times { 
+      @iterations.times {
         result = treat(result)
       }
       @@result2 = str2lines result
@@ -478,43 +416,39 @@ class RlsystemGlade
           $screen.flip
         end
 
-
-
         def recompute
           result = Array.new
-
-          scalex = $width / (1.2 * (@@box[2] - @@box[0])) 
+          scalex = $width / (1.2 * (@@box[2] - @@box[0]))
           scaley = $height / (1.2 * (@@box[3] - @@box[1]))
           if scalex < scaley then
             scale = scalex
             offsetx = (@@box[2] - @@box[0]) * scale * 0.1
-            offsety = ($height - (@@box[3] - @@box[1]) * scale) * 0.5 # - @@box[1]
+            offsety = ($height - (@@box[3] - @@box[1]) * scale) * 0.5
           else
             scale = scaley
             offsety = (@@box[3] - @@box[1]) * scale * 0.1
-            offsetx = ($width - (@@box[2] - @@box[0]) * scale) * 0.5 # - @@box[0]
+            offsetx = ($width - (@@box[2] - @@box[0]) * scale) * 0.5
           end
-          
-          
+
+
           @@result2.each{|x|
-            result << [(x[0] - @@box[0]) * scale + offsetx, (x[1] - @@box[1]) * scale + offsety, (x[2] - @@box[0]) * scale + offsetx, (x[3] - @@box[1]) * scale + offsety]      
+            result << [(x[0] - @@box[0]) * scale + offsetx, (x[1] - @@box[1]) * scale + offsety, (x[2] - @@box[0]) * scale + offsetx, (x[3] - @@box[1]) * scale + offsety]
           }
 
           @@result2 = result
           @@result2.each{|x|
             $screen.drawLine(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
           }
-          
-          @@box = [offsetx,offsety,(@@box[2] - @@box[0]) * scale + offsetx, (@@box[3] - @@box[1]) * scale + offsety]      
-          
+
+          @@box = [offsetx,offsety,(@@box[2] - @@box[0]) * scale + offsetx, (@@box[3] - @@box[1]) * scale + offsety]
         end
-        
+
         render
         event = SDL::Event2.new
-        quit = false 
+        quit = false
         while !quit
           event = SDL::Event2.wait
-          case (event.class.name) 
+          case (event.class.name)
           when "SDL::Event2::VideoResize"
             $screen = SDL.setVideoMode(event.w,event.h,24,SDL::SWSURFACE | SDL::RESIZABLE  | SDL::SRCALPHA)
             $width = event.w
@@ -534,17 +468,14 @@ class RlsystemGlade
           end
         end
       }
-      
+
     end
-    
-
   end
-
 end
 
 if __FILE__ == $0
   PROG_PATH = "rlsystem.glade"
-  PROG_NAME = "rLSystem"
+  PROG_NAME = "LSystems"
   Gtk.init
   RlsystemGlade.new(PROG_PATH, nil, PROG_NAME)
   Gtk.main
