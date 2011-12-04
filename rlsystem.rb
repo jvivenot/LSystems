@@ -440,8 +440,8 @@ class RlsystemGlade
         require 'sdl'
         SDL.init(SDL::INIT_VIDEO)
         $screen = SDL.setVideoMode($width,$height,24,SDL::HWSURFACE | SDL::RESIZABLE)
-        SDL::WM.setCaption("rLSystem (take a look at http://daviveno.org)",
-                           "rLSystem")
+        SDL::WM.setCaption("LinderMayer Systems GUI",
+                           "LSystems")
         $white = $screen.format.mapRGB(255,255,255)
 
         def render
