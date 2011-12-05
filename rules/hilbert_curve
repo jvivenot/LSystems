@@ -1,0 +1,8 @@
+axiom     A
+rule      A        -BF+AFA+FB-
+rule      B        +AF-BFB-FA+
+line      F        1
+postrule  A        []
+postrule  B        []
+angle     +        90
+angle     -        -90

@@ -1,0 +1,6 @@
+axiom   A
+rule    A        B-A-B
+rule    B        A+B+A
+line    F        1
+angle   +        60
+angle   -        -60
