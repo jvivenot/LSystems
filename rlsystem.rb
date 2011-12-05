@@ -506,6 +506,46 @@ class LSystems
       puts "DEBUG: Rules after cleaning comments and white spaces"
       puts temp_rules.map{|l| "DEBUG:     " + l.inspect}
     end
+    begin
+      look_for = lambda {|item| temp_rules.find_all{|x| x[0] == item}}
+      rules_dict = {
+        :axiom     => look_for.call("axiom"),
+        :rules     => look_for.call("rule"),
+        :postrules => look_for.call("postrule"),
+        :lines     => look_for.call("line"),
+        :angles    => look_for.call("angle"),
+        :blanks    => look_for.call("blank"),
+      }
+      temp_rules -= rules_dict.inject([]){|s,v| s+= v[1]}
+      if temp_rules.length != 0 then
+        puts "ERROR: The following lines could not be parsed :"
+        temp_rules.each{|l| puts "ERROR:   %s\n" % l.inspect}
+        exit
+      end
+      if $options.verbose then puts "DEBUG: Created rule dictionary" end
+      rules_dict = Hash[rules_dict.map{|k,v| [k,v.map{|l| l[1..l.length-1]}]}]
+      if $options.verbose then puts "DEBUG: Creaned keywords" end
+      if rules_dict[:axiom].length != 1 or rules_dict[:axiom][0].length != 1 then
+        puts "ERROR: Please provide one and only one axiom. (Syntax: 'axiom AB--B')"
+        exit
+      else
+        rules_dict[:axiom] = rules_dict[:axiom][0][0]
+      end
+      if $options.verbose then puts "DEBUG: Verifying all rules (except axiom) are defined correctly" end
+      rules_dict.each{|k,v|
+        if k != :axiom and not v.inject(true){|r,x| r and (x.length==2)} then
+          puts "ERROR: One of the rules (within '%s') is not defined completely. Please check" % k
+          exit
+        end
+      }
+    rescue
+      puts "ERROR: Something went wrong with the syntax. Please be more careful"
+      raise
+    end
+    if $options.verbose then
+      puts "DEBUG: Rules dictionary after parsing"
+      rules_dict.each{|k,v| puts "DEBUG:     %-7s => %s" % [k,v.inspect]}
+    end
   end
 end
 
