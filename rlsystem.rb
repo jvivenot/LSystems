@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
-
 require 'libglade2'
+require 'optparse'
+require 'ostruct'
 
 Axiome = "Axiome"
 Regle = "Regle"
@@ -12,7 +13,7 @@ Angle = "Angle"
 $width = 500
 $height = 500
 
-class RlsystemGlade
+class LSystems
   class << self
     attr_accessor :lines,:blanks,:angles,:maxx,:maxy,:minx,:miny,:box,:lines_to_draw
   end
@@ -121,13 +122,13 @@ class RlsystemGlade
     str.each_byte{|z|
       y = z.chr
       partial_found = false
-      RlsystemGlade.angles.each{|x|
+      LSystems.angles.each{|x|
         if x[0] == y then partial_found = true end
       }
-      RlsystemGlade.lines.each{|x|
+      LSystems.lines.each{|x|
         if x[0] == y then partial_found = true end
       }
-      RlsystemGlade.blanks.each{|x|
+      LSystems.blanks.each{|x|
         if x[0] == y then partial_found = true end
       }
       if ["[","]"].include? y then partial_found = true end
@@ -248,19 +249,19 @@ class RlsystemGlade
           message "Erreur : Parametre secondaire de ligne invalide"
           error = true
         end
-        RlsystemGlade.lines << [iter[1],iter[2]]
+        LSystems.lines << [iter[1],iter[2]]
       when Blank
         if iter[2].to_i == 0 then
           message "Erreur : Parametre secondaire de blanc invalide"
           error = true
         end
-        RlsystemGlade.blanks << [iter[1],iter[2]]
+        LSystems.blanks << [iter[1],iter[2]]
       when Angle
         if iter[2].to_i == 0 then
           message "Erreur : Parametre secondaire d'angle invalide"
           error = true
         end
-        RlsystemGlade.angles << [iter[1],iter[2]]
+        LSystems.angles << [iter[1],iter[2]]
       end
     }
     unless drawable?(post_treat(treat(@axiome)))
@@ -286,9 +287,9 @@ class RlsystemGlade
     @axiome = nil
     @regles = Array.new
     @postregles = Array.new
-    RlsystemGlade.lines = Array.new
-    RlsystemGlade.blanks = Array.new
-    RlsystemGlade.angles = Array.new
+    LSystems.lines = Array.new
+    LSystems.blanks = Array.new
+    LSystems.angles = Array.new
   end
 
   def str2lines(str)
@@ -296,10 +297,10 @@ class RlsystemGlade
     @curx = 0
     @cury = 0
     @curangle = 0
-    RlsystemGlade.maxx = 0
-    RlsystemGlade.maxy = 0
-    RlsystemGlade.minx = 0
-    RlsystemGlade.miny = 0
+    LSystems.maxx = 0
+    LSystems.maxy = 0
+    LSystems.minx = 0
+    LSystems.miny = 0
     position_stack = Array.new
 
     str.each_byte{|z|
@@ -314,7 +315,7 @@ class RlsystemGlade
         @cury = vals[1]
         @curangle = vals[2]
       end
-      RlsystemGlade.lines.each{|y|
+      LSystems.lines.each{|y|
         if x == y[0] && !found then
           result << [@curx,@cury,@curx + Math.cos(3.14159/180*@curangle) * y[1].to_f, @cury + Math.sin(3.14159/180*@curangle) * y[1].to_f]
           @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
@@ -323,7 +324,7 @@ class RlsystemGlade
           break
         end
       }
-      RlsystemGlade.blanks.each{|y|
+      LSystems.blanks.each{|y|
         if x == y[0] && !found then
           @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
           @cury += Math.sin(3.14159/180*@curangle) * y[1].to_f
@@ -331,37 +332,37 @@ class RlsystemGlade
           break
         end
       }
-      RlsystemGlade.angles.each{|y|
+      LSystems.angles.each{|y|
         if x == y[0] && !found then
           @curangle += y[1].to_f
           found = true
           break
         end
       }
-      if @curx > RlsystemGlade.maxx then RlsystemGlade.maxx = @curx end
-      if @cury > RlsystemGlade.maxy then RlsystemGlade.maxy = @cury end
-      if @curx < RlsystemGlade.minx then RlsystemGlade.minx = @curx end
-      if @cury < RlsystemGlade.miny then RlsystemGlade.miny = @cury end
+      if @curx > LSystems.maxx then LSystems.maxx = @curx end
+      if @cury > LSystems.maxy then LSystems.maxy = @cury end
+      if @curx < LSystems.minx then LSystems.minx = @curx end
+      if @cury < LSystems.miny then LSystems.miny = @cury end
     }
 
     result2 = Array.new
-    scalex = $width / (1.2 * (RlsystemGlade.maxx - RlsystemGlade.minx))
-    scaley = $height / (1.2 * (RlsystemGlade.maxy - RlsystemGlade.miny))
+    scalex = $width / (1.2 * (LSystems.maxx - LSystems.minx))
+    scaley = $height / (1.2 * (LSystems.maxy - LSystems.miny))
     if scalex < scaley then
       scale = scalex
-      offsetx = (RlsystemGlade.maxx - RlsystemGlade.minx) * scale * 0.1
-      offsety = ($height - (RlsystemGlade.maxy - RlsystemGlade.miny) * scale) * 0.5 - RlsystemGlade.miny
+      offsetx = (LSystems.maxx - LSystems.minx) * scale * 0.1
+      offsety = ($height - (LSystems.maxy - LSystems.miny) * scale) * 0.5 - LSystems.miny
     else
       scale = scaley
-      offsety = (RlsystemGlade.maxy - RlsystemGlade.miny) * scale * 0.1
-      offsetx = ($width - (RlsystemGlade.maxx - RlsystemGlade.minx) * scale) * 0.5 - RlsystemGlade.minx
+      offsety = (LSystems.maxy - LSystems.miny) * scale * 0.1
+      offsetx = ($width - (LSystems.maxx - LSystems.minx) * scale) * 0.5 - LSystems.minx
     end
 
     result.each{|x|
-      result2 << [(x[0] - RlsystemGlade.minx) * scale + offsetx, (x[1] - RlsystemGlade.miny) * scale + offsety, (x[2] - RlsystemGlade.minx) * scale + offsetx, (x[3] - RlsystemGlade.miny) * scale + offsety]
+      result2 << [(x[0] - LSystems.minx) * scale + offsetx, (x[1] - LSystems.miny) * scale + offsety, (x[2] - LSystems.minx) * scale + offsetx, (x[3] - LSystems.miny) * scale + offsety]
     }
 
-    RlsystemGlade.box = [offsetx,offsety,(RlsystemGlade.maxx - RlsystemGlade.minx) * scale + offsetx, (RlsystemGlade.maxy - RlsystemGlade.miny) * scale + offsety]
+    LSystems.box = [offsetx,offsety,(LSystems.maxx - LSystems.minx) * scale + offsetx, (LSystems.maxy - LSystems.miny) * scale + offsety]
     result2
   end
 
@@ -372,7 +373,7 @@ class RlsystemGlade
       @iterations.times {
         result = treat(result)
       }
-      RlsystemGlade.lines_to_draw = str2lines result
+      LSystems.lines_to_draw = str2lines result
 
       t = Thread.new{
         require 'sdl'
@@ -383,7 +384,7 @@ class RlsystemGlade
         $white = $screen.format.mapRGB(255,255,255)
 
         def render
-          RlsystemGlade.lines_to_draw.each{|x|
+          LSystems.lines_to_draw.each{|x|
             $screen.draw_line(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
           }
           $screen.flip
@@ -391,28 +392,28 @@ class RlsystemGlade
 
         def recompute
           result = Array.new
-          scalex = $width / (1.2 * (RlsystemGlade.box[2] - RlsystemGlade.box[0]))
-          scaley = $height / (1.2 * (RlsystemGlade.box[3] - RlsystemGlade.box[1]))
+          scalex = $width / (1.2 * (LSystems.box[2] - LSystems.box[0]))
+          scaley = $height / (1.2 * (LSystems.box[3] - LSystems.box[1]))
           if scalex < scaley then
             scale = scalex
-            offsetx = (RlsystemGlade.box[2] - RlsystemGlade.box[0]) * scale * 0.1
-            offsety = ($height - (RlsystemGlade.box[3] - RlsystemGlade.box[1]) * scale) * 0.5
+            offsetx = (LSystems.box[2] - LSystems.box[0]) * scale * 0.1
+            offsety = ($height - (LSystems.box[3] - LSystems.box[1]) * scale) * 0.5
           else
             scale = scaley
-            offsety = (RlsystemGlade.box[3] - RlsystemGlade.box[1]) * scale * 0.1
-            offsetx = ($width - (RlsystemGlade.box[2] - RlsystemGlade.box[0]) * scale) * 0.5
+            offsety = (LSystems.box[3] - LSystems.box[1]) * scale * 0.1
+            offsetx = ($width - (LSystems.box[2] - LSystems.box[0]) * scale) * 0.5
           end
 
-          RlsystemGlade.lines_to_draw.each{|x|
-            result << [(x[0] - RlsystemGlade.box[0]) * scale + offsetx, (x[1] - RlsystemGlade.box[1]) * scale + offsety, (x[2] - RlsystemGlade.box[0]) * scale + offsetx, (x[3] - RlsystemGlade.box[1]) * scale + offsety]
+          LSystems.lines_to_draw.each{|x|
+            result << [(x[0] - LSystems.box[0]) * scale + offsetx, (x[1] - LSystems.box[1]) * scale + offsety, (x[2] - LSystems.box[0]) * scale + offsetx, (x[3] - LSystems.box[1]) * scale + offsety]
           }
 
-          RlsystemGlade.lines_to_draw = result
-          RlsystemGlade.lines_to_draw.each{|x|
+          LSystems.lines_to_draw = result
+          LSystems.lines_to_draw.each{|x|
             $screen.draw_line(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
           }
 
-          RlsystemGlade.box = [offsetx,offsety,(RlsystemGlade.box[2] - RlsystemGlade.box[0]) * scale + offsetx, (RlsystemGlade.box[3] - RlsystemGlade.box[1]) * scale + offsety]
+          LSystems.box = [offsetx,offsety,(LSystems.box[2] - LSystems.box[0]) * scale + offsetx, (LSystems.box[3] - LSystems.box[1]) * scale + offsety]
         end
 
         render
@@ -444,12 +445,71 @@ class RlsystemGlade
       t.join
     end
   end
+
+  def self.parse_options(args)
+    $options = OpenStruct.new
+    OptionParser.new do |opts|
+      opts.banner = "Usage: lsystems.rb [options]"
+      opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
+        $options.verbose = v
+      end
+      opts.on("-i [N]", "--iterations [N]", Integer, "Number of iterations") do |i|
+        $options.iterations = i
+      end
+      opts.on("-f [FILE]", "--file [FILE]", String, "File containing rules and axiom") do |f|
+        $options.file = f
+      end
+    end.parse!(args)
+
+    if $options.verbose then
+      puts "DEBUG: $options: " + $options.inspect
+    end
+
+    if $options.iterations.nil? then
+      puts "WARNING: As you did not provide the expected number of iterations, assumes you want to draw the axiom itself"
+      $options.iterations = 0
+    end
+
+    if not $options.file.nil? and not $options.from_stdin.nil? then
+      puts "ERROR: Rules cannot be read from both file and stdin. Please choose"
+      exit
+    end
+
+    if $options.file.nil? and $options.from_stdin.nil?  then
+      puts "WARNING: No rules file provided. Will try from stdin"
+      $options.from_stdin = true
+    end
+
+    rules = []
+    if $options.from_stdin:
+      rules = $stdin.readlines
+    else
+      rules = File.new($options.file, "r").readlines
+    end
+
+    if rules.length == 0 then
+      puts "ERROR: Could not find any rules"
+      exit
+    elsif $options.verbose then
+      puts "DEBUG: Rules read from input (before parsing) : "
+      puts rules.map{|l| "DEBUG:     " + l}
+    end
+
+    rules
+  end
+
+  def self.parse_rules(rules)
+    temp_rules = rules.dup
+    # Thanks Ruby for the syntax of the following line. My future self will definitely like it
+    temp_rules = temp_rules.map{|l| (l.include? "#" and l[/^(.*)\#/,1] or l).strip }.find_all{|l| l.length != 0}.map{|l| l.split}
+    if $options.verbose then
+      puts "DEBUG: Rules after cleaning comments and white spaces"
+      puts temp_rules.map{|l| "DEBUG:     " + l.inspect}
+    end
+  end
 end
 
 if __FILE__ == $0
-  PROG_PATH = "rlsystem.glade"
-  PROG_NAME = "LSystems"
-  Gtk.init
-  RlsystemGlade.new(PROG_PATH, nil, PROG_NAME)
-  Gtk.main
+  rules = LSystems.parse_options ARGV
+  rules = LSystems.parse_rules rules
 end
