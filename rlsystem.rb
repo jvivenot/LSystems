@@ -9,7 +9,10 @@ $height = 500
 class LSystems
   def initialize(rules = {})
     @rules = rules
-    functional_check
+    if not functional_check then
+      puts "ERROR: Your L-System definition is not drawable. Aborting..."
+      exit
+    end
   end
 
   def functional_check
@@ -18,18 +21,18 @@ class LSystems
     @rules[:blanks].each{|l| if l[1].to_i == 0 then puts "ERROR: Invalid blank length (0)" end}
     @rules[:angles].each{|l| if l[1].to_i == 0 then puts "ERROR: Invalid angle parameter (0)" end}
     unless drawable?(post_treat(treat(@rules[:axiom])))
-      message "Erreur : L'axiome n'est pas dessinable (meme apres post traitement)"
+      puts "ERROR: Axiome is not drawable as is (even after post-treatment)"
       error = true
     end
     @rules[:rules].each {|r|
       unless drawable?(post_treat(r[1]))
-        message "Erreur : Le resultat d'une regle n'est pas dessinable (meme apres post traitement)"
+        puts "ERROR: Some rule result is not drawable (event after post-treatment)"
         error = true
       end
     }
     @rules[:postrules].each {|r|
       unless drawable?(r[1])
-        message "Erreur : Le resultat d'une postregle n'est pas dessinable"
+        puts "ERROR: Some post-rule result is not drawable"
         error = true
       end
     }
@@ -171,6 +174,7 @@ class LSystems
     $options.iterations.times {
       result = treat(result)
     }
+    if $options.verbose then puts "DEBUG: String output : %s" % result end
     @lines_to_draw = str2lines result
 
     $white = $screen.format.mapRGB(255,255,255)
@@ -228,9 +232,6 @@ class LSystems
         end
       when SDL::Event2::Quit
         quit = true
-      end
-      if quit then
-        print "Finished treating the event and will quit\n"
       end
     end
   end
