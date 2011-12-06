@@ -1,0 +1,7 @@
+axiom   F-G-G
+rule    F        F-G+F+G-F
+rule    G        GG
+line    F        1
+line    G        1
+angle   +        120
+angle   -        -120
