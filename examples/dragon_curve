@@ -1,0 +1,8 @@
+axiom    FX
+rule     X        X+YF
+rule     Y        FX-Y
+postrule Y        []
+postrule X        []
+line     F        1
+angle    +        90
+angle    -        -90
