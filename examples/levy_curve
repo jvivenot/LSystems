@@ -1,0 +1,5 @@
+axiom    F
+rule     F        +F--F+
+line     F        1
+angle    +        45
+angle    -        -45
