@@ -1,9 +1,0 @@
-  #toto pouet
-axiom   F++F++F #this is the axiom
-rule    F        F-F++F-F
-line    F        1
-angle   +        60
-angle   -        -60
-
-
-#pouet pouet pouet
