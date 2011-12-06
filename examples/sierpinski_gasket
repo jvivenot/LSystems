@@ -1,6 +1,7 @@
 axiom   A
 rule    A        B-A-B
 rule    B        A+B+A
-line    F        1
+line    A        1
+line    B        1
 angle   +        60
 angle   -        -60
