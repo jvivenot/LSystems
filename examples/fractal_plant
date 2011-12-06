@@ -1,0 +1,8 @@
+axiom    ?+X
+rule     X        F-[[X]+X]+F[+FX]-X
+rule     F        FF
+postrule X        []
+line     F        1
+angle    +        25
+angle    -        -25
+angle    ?        -90

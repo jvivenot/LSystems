@@ -1,0 +1,7 @@
+axiom   --0
+rule    1        11
+rule    0        1[-0]+0
+line    1        1
+line    0        1
+angle   +        45
+angle   -        -45
