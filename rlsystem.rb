@@ -1,83 +1,39 @@
 #!/usr/bin/env ruby
-
-require 'libglade2'
-
-Axiome = "Axiome"
-Regle = "Regle"
-Regle2 = "Post Regle"
-Line = "Ligne"
-Blank = "Blank"
-Angle = "Angle"
+require 'optparse'
+require 'ostruct'
+require 'sdl'
 
 $width = 500
 $height = 500
 
-class RlsystemGlade
-  class << self
-    attr_accessor :lines,:blanks,:angles,:maxx,:maxy,:minx,:miny,:box,:lines_to_draw
+class LSystems
+  def initialize(rules = {})
+    @rules = rules
+    functional_check
   end
 
-  include GetText
-  attr :glade
-
-  def initialize(path_or_data, root = nil, domain = nil, localedir = nil, flag = GladeXML::FILE)
-    bindtextdomain(domain, localedir, nil, "UTF-8")
-    @glade = GladeXML.new(path_or_data, root, domain, localedir, flag) {|handler| method(handler)}
-    @entry1 = @glade["entry1"]
-    @entry2 = @glade["entry2"]
-    @entry3 = @glade["entry3"]
-    @combobox1 = @glade["combobox1"]
-    @ok = @glade["button7"]
-    @cancel = @glade["button8"]
-    @textview = @glade["textview1"]
-
-    @editing_state = 0 #0 nothing, 1 new, 2 edit
-    @liststore = Gtk::ListStore.new(String,String,String)
-    @liststore2 = Gtk::ListStore.new(String)
-    @combobox1.model = @liststore2
-    @listview = @glade["treeview1"]
-    @listview.model = @liststore
-    text_column = 0
-    color_column = 4
-    renderer = Gtk::CellRendererText.new
-    column = Gtk::TreeViewColumn.new("Type", renderer,
-                                     :text => text_column,
-                                     :foreground => color_column)
-    @listview.append_column(column)
-    column = Gtk::TreeViewColumn.new("Parametre principal", renderer,
-                                     :text => text_column + 1,
-                                     :foreground => color_column + 1)
-    @listview.append_column(column)
-    column = Gtk::TreeViewColumn.new("Parametre secondaire", renderer,
-                                     :text => text_column + 2 ,
-                                     :foreground => color_column + 2)
-    @listview.append_column(column)
-
-    [Axiome, Regle, Regle2, Line, Blank, Angle].each {|x| @combobox1.append_text x}
-    set_invisible
-
-    base_rules = [[Axiome,"F++F++F",""],
-      [Regle, "F", "F-F++F-F"],
-      [Line,"F","1"],
-      [Angle,"+","60"],
-      [Angle,"-","-60"]
-    ]
-    base_rules = [[Axiome,"AB",""],
-      [Regle, "A", "AA"],
-      [Regle, "B", "[+AB][-AB]"],
-      [Line,"A","1"],
-      [Line,"B","1"],
-      [Angle,"+","60"],
-      [Angle,"-","-60"]
-    ]
-    base_rules.each {|x|
-      iter = @liststore.append
-      @liststore.set_value(iter,0,x[0])
-      @liststore.set_value(iter,1,x[1])
-      @liststore.set_value(iter,2,x[2])
+  def functional_check
+    error = false
+    @rules[:lines].each{|l| if l[1].to_i == 0 then puts "ERROR: Invalid line length (0)" end}
+    @rules[:blanks].each{|l| if l[1].to_i == 0 then puts "ERROR: Invalid blank length (0)" end}
+    @rules[:angles].each{|l| if l[1].to_i == 0 then puts "ERROR: Invalid angle parameter (0)" end}
+    unless drawable?(post_treat(treat(@rules[:axiom])))
+      message "Erreur : L'axiome n'est pas dessinable (meme apres post traitement)"
+      error = true
+    end
+    @rules[:rules].each {|r|
+      unless drawable?(post_treat(r[1]))
+        message "Erreur : Le resultat d'une regle n'est pas dessinable (meme apres post traitement)"
+        error = true
+      end
     }
-
-    @entry3.text = "2"
+    @rules[:postrules].each {|r|
+      unless drawable?(r[1])
+        message "Erreur : Le resultat d'une postregle n'est pas dessinable"
+        error = true
+      end
+    }
+    !error
   end
 
   def treat(str)
@@ -86,10 +42,10 @@ class RlsystemGlade
       x = y.chr
       found = false
       i = 0
-      until found || i == @regles.length
-        if @regles[i][0] == x then
+      until found || i == @rules[:rules].length
+        if @rules[:rules][i][0] == x then
           found = true
-          result << @regles[i][1]
+          result << @rules[:rules][i][1]
         end
         i += 1
       end
@@ -104,10 +60,10 @@ class RlsystemGlade
       x = y.chr
       found = false
       i = 0
-      until found || i == @postregles.length
-        if @postregles[i][0] == x then
+      until found || i == @rules[:postrules].length
+        if @rules[:postrules][i][0] == x then
           found = true
-          postresult << @postregles[i][1]
+          postresult << @rules[:postrules][i][1]
         end
         i += 1
       end
@@ -121,13 +77,13 @@ class RlsystemGlade
     str.each_byte{|z|
       y = z.chr
       partial_found = false
-      RlsystemGlade.angles.each{|x|
+      @rules[:angles].each{|x|
         if x[0] == y then partial_found = true end
       }
-      RlsystemGlade.lines.each{|x|
+      @rules[:lines].each{|x|
         if x[0] == y then partial_found = true end
       }
-      RlsystemGlade.blanks.each{|x|
+      @rules[:blanks].each{|x|
         if x[0] == y then partial_found = true end
       }
       if ["[","]"].include? y then partial_found = true end
@@ -136,170 +92,15 @@ class RlsystemGlade
     found
   end
 
-  def message(txt)
-    @textview.buffer.insert_at_cursor txt + "\n"
-  end
-
-  def set_invisible
-    @entry1.visible = false
-    @entry2.visible = false
-    @combobox1.visible = false
-    @ok.visible = false
-    @cancel.visible = false
-  end
-
-  def set_visible
-    @entry1.visible = true
-    @entry2.visible = true
-    @combobox1.visible = true
-    @ok.visible = true
-    @cancel.visible = true
-  end
-
-  def add(widget)
-    if @editing_state == 0 then
-      set_visible
-      @editing_state = 1
-    else
-      message("Arretez tout autre action avant d'ajouter une entree...")
-    end
-  end
-
-  def edit(widget)
-    if @editing_state == 0 then
-      found = false
-      data = nil
-      @listview.selection.selected_each{|model,path,iter|
-        found = true
-        @selected = iter
-      }
-      if found then
-        @entry1.text = @selected[1]
-        @entry2.text = @selected[2]
-        set_visible
-        @editing_state = 2
-      else
-        message("Aucune entree de selectionnee, donc rien a editer...")
-      end
-    else
-      message("Arretez tout autre action avant d'ajouter une entree...")
-    end
-  end
-
-  def ok(widget)
-    if @editing_state == 2 then @liststore.remove @selected end
-    iter = @liststore.append
-    @liststore.set_value(iter,0,@combobox1.active_text)
-    @liststore.set_value(iter,1,@entry1.text)
-    @liststore.set_value(iter,2,@entry2.text)
-    cancel(widget)
-  end
-
-  def remove(widget)
-    found = false
-    @listview.selection.selected_each{|model,path,iter|
-      found = true
-      @selected = iter
-    }
-    if found then
-      @liststore.remove @selected
-    else 
-      message("Aucune entree selectionnee !")
-    end
-  end
-
-  def cancel(widget)
-    set_invisible
-    @editing_state = 0
-    @entry1.text = ""
-    @entry2.text = ""
-  end
-
-  def open(widget)
-    puts "open() is not implemented yet."
-  end
-
-  def save(widget)
-    puts "save() is not implemented yet."
-  end
-
-  def verify
-    free_everything
-    error = false
-    @liststore.each{ |model,path,iter| 
-      if iter[1].length != 1 && iter[0] != Axiome then
-        message("Erreur : un parametre principal est mal defini...")
-        error = true
-      end
-      case iter[0]
-      when Axiome
-        if @axiome != nil then 
-          message("Erreur : deux axiomes ou plus definis !")
-          error = true
-        else
-          @axiome = iter[1]
-        end
-      when Regle
-        @regles << [iter[1],iter[2]]
-      when Regle2
-        @postregles << [iter[1],iter[2]]
-      when Line
-        if iter[2].to_i == 0 then
-          message "Erreur : Parametre secondaire de ligne invalide"
-          error = true
-        end
-        RlsystemGlade.lines << [iter[1],iter[2]]
-      when Blank
-        if iter[2].to_i == 0 then
-          message "Erreur : Parametre secondaire de blanc invalide"
-          error = true
-        end
-        RlsystemGlade.blanks << [iter[1],iter[2]]
-      when Angle
-        if iter[2].to_i == 0 then
-          message "Erreur : Parametre secondaire d'angle invalide"
-          error = true
-        end
-        RlsystemGlade.angles << [iter[1],iter[2]]
-      end
-    }
-    unless drawable?(post_treat(treat(@axiome)))
-      message "Erreur : L'axiome n'est pas dessinable (meme apres post traitement)"
-      error = true
-    end
-    @regles.each {|r|
-      unless drawable?(post_treat(r[1]))
-        message "Erreur : Le resultat d'une regle n'est pas dessinable (meme apres post traitement)"
-        error = true
-      end
-    }
-    @postregles.each {|r|
-      unless drawable?(r[1])
-        message "Erreur : Le resultat d'une postregle n'est pas dessinable"
-        error = true
-      end
-    }
-    !error
-  end
-
-  def free_everything
-    @axiome = nil
-    @regles = Array.new
-    @postregles = Array.new
-    RlsystemGlade.lines = Array.new
-    RlsystemGlade.blanks = Array.new
-    RlsystemGlade.angles = Array.new
-  end
-
   def str2lines(str)
     result = Array.new
     @curx = 0
     @cury = 0
     @curangle = 0
-    RlsystemGlade.maxx = 0
-    RlsystemGlade.maxy = 0
-    RlsystemGlade.minx = 0
-    RlsystemGlade.miny = 0
+    @maxx = 0
+    @maxy = 0
+    @minx = 0
+    @miny = 0
     position_stack = Array.new
 
     str.each_byte{|z|
@@ -314,7 +115,7 @@ class RlsystemGlade
         @cury = vals[1]
         @curangle = vals[2]
       end
-      RlsystemGlade.lines.each{|y|
+      @rules[:lines].each{|y|
         if x == y[0] && !found then
           result << [@curx,@cury,@curx + Math.cos(3.14159/180*@curangle) * y[1].to_f, @cury + Math.sin(3.14159/180*@curangle) * y[1].to_f]
           @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
@@ -323,7 +124,7 @@ class RlsystemGlade
           break
         end
       }
-      RlsystemGlade.blanks.each{|y|
+      @rules[:blanks].each{|y|
         if x == y[0] && !found then
           @curx += Math.cos(3.14159/180*@curangle) * y[1].to_f
           @cury += Math.sin(3.14159/180*@curangle) * y[1].to_f
@@ -331,125 +132,219 @@ class RlsystemGlade
           break
         end
       }
-      RlsystemGlade.angles.each{|y|
+      @rules[:angles].each{|y|
         if x == y[0] && !found then
           @curangle += y[1].to_f
           found = true
           break
         end
       }
-      if @curx > RlsystemGlade.maxx then RlsystemGlade.maxx = @curx end
-      if @cury > RlsystemGlade.maxy then RlsystemGlade.maxy = @cury end
-      if @curx < RlsystemGlade.minx then RlsystemGlade.minx = @curx end
-      if @cury < RlsystemGlade.miny then RlsystemGlade.miny = @cury end
+      if @curx > @maxx then @maxx = @curx end
+      if @cury > @maxy then @maxy = @cury end
+      if @curx < @minx then @minx = @curx end
+      if @cury < @miny then @miny = @cury end
     }
 
     result2 = Array.new
-    scalex = $width / (1.2 * (RlsystemGlade.maxx - RlsystemGlade.minx))
-    scaley = $height / (1.2 * (RlsystemGlade.maxy - RlsystemGlade.miny))
+    scalex = $width / (1.2 * (@maxx - @minx))
+    scaley = $height / (1.2 * (@maxy - @miny))
     if scalex < scaley then
       scale = scalex
-      offsetx = (RlsystemGlade.maxx - RlsystemGlade.minx) * scale * 0.1
-      offsety = ($height - (RlsystemGlade.maxy - RlsystemGlade.miny) * scale) * 0.5 - RlsystemGlade.miny
+      offsetx = (@maxx - @minx) * scale * 0.1
+      offsety = ($height - (@maxy - @miny) * scale) * 0.5 - @miny
     else
       scale = scaley
-      offsety = (RlsystemGlade.maxy - RlsystemGlade.miny) * scale * 0.1
-      offsetx = ($width - (RlsystemGlade.maxx - RlsystemGlade.minx) * scale) * 0.5 - RlsystemGlade.minx
+      offsety = (@maxy - @miny) * scale * 0.1
+      offsetx = ($width - (@maxx - @minx) * scale) * 0.5 - @minx
     end
 
     result.each{|x|
-      result2 << [(x[0] - RlsystemGlade.minx) * scale + offsetx, (x[1] - RlsystemGlade.miny) * scale + offsety, (x[2] - RlsystemGlade.minx) * scale + offsetx, (x[3] - RlsystemGlade.miny) * scale + offsety]
+      result2 << [(x[0] - @minx) * scale + offsetx, (x[1] - @miny) * scale + offsety, (x[2] - @minx) * scale + offsetx, (x[3] - @miny) * scale + offsety]
     }
 
-    RlsystemGlade.box = [offsetx,offsety,(RlsystemGlade.maxx - RlsystemGlade.minx) * scale + offsetx, (RlsystemGlade.maxy - RlsystemGlade.miny) * scale + offsety]
+    @box = [offsetx,offsety,(@maxx - @minx) * scale + offsetx, (@maxy - @miny) * scale + offsety]
     result2
   end
 
-  def render(widget)
-    @iterations = @entry3.text.to_i
-    if verify then
-      result = @axiome
-      @iterations.times {
-        result = treat(result)
+  def render
+    result = @rules[:axiom]
+    $options.iterations.times {
+      result = treat(result)
+    }
+    @lines_to_draw = str2lines result
+
+    $white = $screen.format.mapRGB(255,255,255)
+
+    def subrender
+      @lines_to_draw.each{|x|
+        $screen.draw_line(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
       }
-      RlsystemGlade.lines_to_draw = str2lines result
-
-      t = Thread.new{
-        require 'sdl'
-        SDL.init(SDL::INIT_VIDEO)
-        $screen = SDL.setVideoMode($width,$height,24,SDL::HWSURFACE | SDL::RESIZABLE)
-        SDL::WM.setCaption("LinderMayer Systems GUI",
-                           "LSystems")
-        $white = $screen.format.mapRGB(255,255,255)
-
-        def render
-          RlsystemGlade.lines_to_draw.each{|x|
-            $screen.draw_line(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
-          }
-          $screen.flip
-        end
-
-        def recompute
-          result = Array.new
-          scalex = $width / (1.2 * (RlsystemGlade.box[2] - RlsystemGlade.box[0]))
-          scaley = $height / (1.2 * (RlsystemGlade.box[3] - RlsystemGlade.box[1]))
-          if scalex < scaley then
-            scale = scalex
-            offsetx = (RlsystemGlade.box[2] - RlsystemGlade.box[0]) * scale * 0.1
-            offsety = ($height - (RlsystemGlade.box[3] - RlsystemGlade.box[1]) * scale) * 0.5
-          else
-            scale = scaley
-            offsety = (RlsystemGlade.box[3] - RlsystemGlade.box[1]) * scale * 0.1
-            offsetx = ($width - (RlsystemGlade.box[2] - RlsystemGlade.box[0]) * scale) * 0.5
-          end
-
-          RlsystemGlade.lines_to_draw.each{|x|
-            result << [(x[0] - RlsystemGlade.box[0]) * scale + offsetx, (x[1] - RlsystemGlade.box[1]) * scale + offsety, (x[2] - RlsystemGlade.box[0]) * scale + offsetx, (x[3] - RlsystemGlade.box[1]) * scale + offsety]
-          }
-
-          RlsystemGlade.lines_to_draw = result
-          RlsystemGlade.lines_to_draw.each{|x|
-            $screen.draw_line(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
-          }
-
-          RlsystemGlade.box = [offsetx,offsety,(RlsystemGlade.box[2] - RlsystemGlade.box[0]) * scale + offsetx, (RlsystemGlade.box[3] - RlsystemGlade.box[1]) * scale + offsety]
-        end
-
-        render
-        event = SDL::Event2.new
-        quit = false
-        while !quit
-          event = SDL::Event2.wait
-          case (event.class.name)
-          when "SDL::Event2::VideoResize"
-            $screen = SDL.setVideoMode(event.w,event.h,24,SDL::SWSURFACE | SDL::RESIZABLE  | SDL::SRCALPHA)
-            $width = event.w
-            $height = event.h
-            recompute
-            render
-          when "SDL::Event2::Quit"
-            quit = true
-          when "SDL::Event2::KeyUp"
-            if (event.sym == SDL::Key::ESCAPE)
-              quit = true
-            end
-          when SDL::Event2::Quit
-            quit = true
-          end
-          if quit then
-            print "Finished treating the event and will quit\n"
-          end
-        end
-      }
-      t.join
+      $screen.flip
     end
+
+    def recompute
+      result = Array.new
+      scalex = $width / (1.2 * (@box[2] - @box[0]))
+      scaley = $height / (1.2 * (@box[3] - @box[1]))
+      if scalex < scaley then
+        scale = scalex
+        offsetx = (@box[2] - @box[0]) * scale * 0.1
+        offsety = ($height - (@box[3] - @box[1]) * scale) * 0.5
+      else
+        scale = scaley
+        offsety = (@box[3] - @box[1]) * scale * 0.1
+        offsetx = ($width - (@box[2] - @box[0]) * scale) * 0.5
+      end
+
+      @lines_to_draw.each{|x|
+        result << [(x[0] - @box[0]) * scale + offsetx, (x[1] - @box[1]) * scale + offsety, (x[2] - @box[0]) * scale + offsetx, (x[3] - @box[1]) * scale + offsety]
+      }
+
+      @lines_to_draw = result
+      @lines_to_draw.each{|x|
+        $screen.draw_line(x[0].to_i,x[1].to_i,x[2].to_i,x[3].to_i,$white)
+      }
+
+      @box = [offsetx,offsety,(@box[2] - @box[0]) * scale + offsetx, (@box[3] - @box[1]) * scale + offsety]
+    end
+
+    subrender
+    event = SDL::Event2.new
+    quit = false
+    while !quit
+      event = SDL::Event2.wait
+      case (event.class.name)
+      when "SDL::Event2::VideoResize"
+        $screen = SDL.setVideoMode(event.w,event.h,24,SDL::SWSURFACE | SDL::RESIZABLE  | SDL::SRCALPHA)
+        $width = event.w
+        $height = event.h
+        recompute
+        subrender
+      when "SDL::Event2::Quit"
+        quit = true
+      when "SDL::Event2::KeyUp"
+        if (event.sym == SDL::Key::ESCAPE)
+          quit = true
+        end
+      when SDL::Event2::Quit
+        quit = true
+      end
+      if quit then
+        print "Finished treating the event and will quit\n"
+      end
+    end
+  end
+
+  def self.parse_options(args)
+    $options = OpenStruct.new
+    OptionParser.new do |opts|
+      opts.banner = "Usage: lsystems.rb [options]"
+      opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
+        $options.verbose = v
+      end
+      opts.on("-i [N]", "--iterations [N]", Integer, "Number of iterations") do |i|
+        $options.iterations = i
+      end
+      opts.on("-f [FILE]", "--file [FILE]", String, "File containing rules and axiom") do |f|
+        $options.file = f
+      end
+    end.parse!(args)
+
+    if $options.verbose then
+      puts "DEBUG: $options: " + $options.inspect
+    end
+
+    if $options.iterations.nil? then
+      puts "WARNING: As you did not provide the expected number of iterations, assumes you want to draw the axiom itself"
+      $options.iterations = 0
+    end
+
+    if not $options.file.nil? and not $options.from_stdin.nil? then
+      puts "ERROR: Rules cannot be read from both file and stdin. Please choose"
+      exit
+    end
+
+    if $options.file.nil? and $options.from_stdin.nil?  then
+      puts "WARNING: No rules file provided. Will try from stdin"
+      $options.from_stdin = true
+    end
+
+    rules = []
+    if $options.from_stdin:
+      rules = $stdin.readlines
+    else
+      rules = File.new($options.file, "r").readlines
+    end
+
+    if rules.length == 0 then
+      puts "ERROR: Could not find any rules"
+      exit
+    elsif $options.verbose then
+      puts "DEBUG: Rules read from input (before parsing) : "
+      puts rules.map{|l| "DEBUG:     " + l}
+    end
+
+    rules
+  end
+
+  def self.parse_rules(rules)
+    temp_rules = rules.dup
+    # Thanks Ruby for the syntax of the following line. My future self will definitely like it
+    temp_rules = temp_rules.map{|l| (l.include? "#" and l[/^(.*)\#/,1] or l).strip }.find_all{|l| l.length != 0}.map{|l| l.split}
+      if $options.verbose then
+        puts "DEBUG: Rules after cleaning comments and white spaces"
+        puts temp_rules.map{|l| "DEBUG:     " + l.inspect}
+      end
+    begin
+      look_for = lambda {|item| temp_rules.find_all{|x| x[0] == item}}
+      rules_dict = {
+        :axiom     => look_for.call("axiom"),
+        :rules     => look_for.call("rule"),
+        :postrules => look_for.call("postrule"),
+        :lines     => look_for.call("line"),
+        :angles    => look_for.call("angle"),
+        :blanks    => look_for.call("blank"),
+      }
+      temp_rules -= rules_dict.inject([]){|s,v| s+= v[1]}
+      if temp_rules.length != 0 then
+        puts "ERROR: The following lines could not be parsed :"
+        temp_rules.each{|l| puts "ERROR:   %s\n" % l.inspect}
+        exit
+      end
+      if $options.verbose then puts "DEBUG: Created rule dictionary" end
+      rules_dict = Hash[rules_dict.map{|k,v| [k,v.map{|l| l[1..l.length-1]}]}]
+      if $options.verbose then puts "DEBUG: Creaned keywords" end
+      if rules_dict[:axiom].length != 1 or rules_dict[:axiom][0].length != 1 then
+        puts "ERROR: Please provide one and only one axiom. (Syntax: 'axiom AB--B')"
+        exit
+      else
+        rules_dict[:axiom] = rules_dict[:axiom][0][0]
+      end
+      if $options.verbose then puts "DEBUG: Verifying all rules (except axiom) are defined correctly" end
+      rules_dict.each{|k,v|
+        if k != :axiom and not v.inject(true){|r,x| r and (x.length==2)} then
+          puts "ERROR: One of the rules (within '%s') is not defined completely. Please check" % k
+          exit
+        end
+      }
+    rescue
+      puts "ERROR: Something went wrong with the syntax. Please be more careful"
+      raise
+    end
+    if $options.verbose then
+      puts "DEBUG: Rules dictionary after parsing"
+      rules_dict.each{|k,v| puts "DEBUG:     %-7s => %s" % [k,v.inspect]}
+    end
+    rules_dict
   end
 end
 
 if __FILE__ == $0
-  PROG_PATH = "rlsystem.glade"
-  PROG_NAME = "LSystems"
-  Gtk.init
-  RlsystemGlade.new(PROG_PATH, nil, PROG_NAME)
-  Gtk.main
+  rules = LSystems.parse_options ARGV
+  rules = LSystems.parse_rules rules
+  instance = LSystems.new(rules)
+  SDL.init SDL::INIT_VIDEO
+  $screen = SDL.setVideoMode($width,$height,24,SDL::HWSURFACE | SDL::RESIZABLE)
+  SDL::WM.setCaption("LinderMayer Systems GUI", "LSystems")
+  instance.render
 end
