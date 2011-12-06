@@ -20,7 +20,7 @@ class LSystems
     @rules[:lines].each{|l| if l[1].to_i == 0 then puts "ERROR: Invalid line length (0)" end}
     @rules[:blanks].each{|l| if l[1].to_i == 0 then puts "ERROR: Invalid blank length (0)" end}
     @rules[:angles].each{|l| if l[1].to_i == 0 then puts "ERROR: Invalid angle parameter (0)" end}
-    unless drawable?(post_treat(treat(@rules[:axiom])))
+    unless drawable?(treat(@rules[:axiom]))
       puts "ERROR: Axiome is not drawable as is (even after post-treatment)"
       error = true
     end
@@ -40,21 +40,25 @@ class LSystems
   end
 
   def treat(str)
-    result = String.new
-    str.each_byte{|y|
-      x = y.chr
-      found = false
-      i = 0
-      until found || i == @rules[:rules].length
-        if @rules[:rules][i][0] == x then
-          found = true
-          result << @rules[:rules][i][1]
+    temp = str
+    $options.iterations.times{
+      result = String.new
+      temp.each_byte{|y|
+        x = y.chr
+        found = false
+        i = 0
+        until found || i == @rules[:rules].length
+          if @rules[:rules][i][0] == x then
+            found = true
+            result << @rules[:rules][i][1]
+          end
+          i += 1
         end
-        i += 1
-      end
-      result << x unless found
+        result << x unless found
+      }
+      temp = result
     }
-    post_treat(result)
+    post_treat(temp)
   end
 
   def post_treat(str)
@@ -171,9 +175,7 @@ class LSystems
 
   def render
     result = @rules[:axiom]
-    $options.iterations.times {
-      result = treat(result)
-    }
+    result = treat(result)
     if $options.verbose then puts "DEBUG: String output : %s" % result end
     @lines_to_draw = str2lines result
 
