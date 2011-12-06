@@ -1,0 +1,5 @@
+axiom   F++F
+rule    F        F+F-F-F+F
+line    F        1
+angle   +        90
+angle   -        -90
